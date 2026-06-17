@@ -67,17 +67,17 @@ The `wavecar_compressor.py` wrapper shells out to the compiled executable.
 from wavecar_compressor import analyze, compress
 
 rows = analyze("WAVECAR", [0.75, 0.9, 1.0])
-compress("WAVECAR", "WAVECAR.small", 0.75, zero_small=True)
+compress("WAVECAR", "WAVECAR.small", 0.75, zero_small=True, create_bz2=True)
 ```
 
 CLI form:
 
 ```bash
 ./wavecar_compressor.py analyze WAVECAR 0.75 0.9 1.0
-./wavecar_compressor.py compress WAVECAR WAVECAR.small 0.75 --zero-small
+./wavecar_compressor.py compress WAVECAR WAVECAR.small 0.75 --zero-small --bz2
 ```
 
-Set `WAVECAR_COMPRESSOR_BIN` or pass `--binary` if the executable is not at `build/wavecar_compressor`.
+With `--bz2`, the wrapper writes `WAVECAR.small.bz2` after the raw compressed `WAVECAR.small` is created. Use `--bz2-output <path>` to choose another archive path. Set `WAVECAR_COMPRESSOR_BIN` or pass `--binary` if the executable is not at `build/wavecar_compressor`.
 
 ## Notes And Caveats
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import bz2
 import csv
 import os
 import subprocess
@@ -47,6 +48,28 @@ def _run(
     return subprocess.run(command, check=True, capture_output=True, text=True)
 
 
+def bzip2_compress(
+    input_path: str | os.PathLike[str],
+    output_path: str | os.PathLike[str] | None = None,
+    compresslevel: int = 9,
+    chunk_size: int = 1024 * 1024,
+) -> Path:
+    source = Path(input_path)
+    destination = Path(output_path) if output_path is not None else source.with_name(
+        source.name + ".bz2"
+    )
+
+    with source.open("rb") as input_file:
+        with bz2.open(destination, "wb", compresslevel=compresslevel) as output_file:
+            while True:
+                chunk = input_file.read(chunk_size)
+                if not chunk:
+                    break
+                output_file.write(chunk)
+
+    return destination
+
+
 def analyze(
     input_path: str | os.PathLike[str],
     fractions: Iterable[float] | None = None,
@@ -82,6 +105,9 @@ def compress(
     cutoff_fraction: float,
     zero_small: bool = False,
     binary: str | os.PathLike[str] | None = None,
+    *,
+    create_bz2: bool = False,
+    bz2_output: str | os.PathLike[str] | None = None,
 ) -> str:
     args = [
         "compress",
@@ -90,7 +116,11 @@ def compress(
         str(cutoff_fraction),
         "true" if zero_small else "false",
     ]
-    return _run(args, binary).stdout
+    stdout = _run(args, binary).stdout
+    if create_bz2:
+        compressed_path = bzip2_compress(output_path, bz2_output)
+        stdout += f"Bzip2 file written: {compressed_path}\n"
+    return stdout
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -111,6 +141,16 @@ def _build_parser() -> argparse.ArgumentParser:
     compress_parser.add_argument("output")
     compress_parser.add_argument("cutoff_fraction", type=float)
     compress_parser.add_argument("--zero-small", action="store_true")
+    compress_parser.add_argument(
+        "--bz2",
+        action="store_true",
+        help="Also write a bzip2-compressed copy of the output WAVECAR",
+    )
+    compress_parser.add_argument(
+        "--bz2-output",
+        default=None,
+        help="Path for the bzip2 output; defaults to <output>.bz2",
+    )
 
     return parser
 
@@ -134,8 +174,10 @@ def main() -> int:
                 args.input,
                 args.output,
                 args.cutoff_fraction,
-                args.zero_small,
-                args.binary,
+                zero_small=args.zero_small,
+                binary=args.binary,
+                create_bz2=args.bz2,
+                bz2_output=args.bz2_output,
             ),
             end="",
         )
